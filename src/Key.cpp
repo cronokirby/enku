@@ -1,5 +1,6 @@
 #include "Key.hpp"
 #include "random.hpp"
+#include <assert.h>
 
 // We use 256 bits, since that's the size mandated by ChaCha20
 constexpr uint32_t KEY_SIZE = 256;
@@ -23,4 +24,33 @@ Key::~Key() {
     opaque[i] = 0;
   }
   delete[] data;
+}
+
+constexpr char BASE64_TABLE[65] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+constexpr char base64(uint8_t c) {
+  assert(c < 64);
+  return BASE64_TABLE[c];
+}
+
+void Key::write_pem(std::ostream &stream) {
+  stream << "-----BEGIN ENKU PRIVATE KEY-----\n";
+  uint32_t block_size = 1 << 5;
+  uint32_t blocks = KEY_SIZE >> 5;
+  for (uint32_t block = 0; block < blocks; ++block) {
+    for (uint32_t bi = 0; bi < block_size; bi += 3) {
+      uint32_t j = (block << 5) | bi;
+      uint8_t x1 = data[j];
+      uint8_t x2 = data[j + 1];
+      uint8_t x3 = data[j + 2];
+
+      stream.put(base64(x1 & 0x3F));
+      stream.put(base64((x2 & 0xF) | (x1 >> 6)));
+      stream.put(base64((x3 & 0x3) | (x2 >> 4)));
+      stream.put(base64(x3 >> 6));
+    }
+    stream.put('\n');
+  }
+  stream << "-----END ENKU PRIVATE KEY-----\n";
 }

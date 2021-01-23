@@ -1,7 +1,9 @@
-#include <iostream>
+#include "Key.hpp"
+#include <fstream>
 
 int main() {
-  std::cout << "Hello World\n";
-
+  auto key = Key::random();
+  std::ofstream out{".key.pem"};
+  key.write_pem(out);
   return 0;
 }

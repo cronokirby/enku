@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <stdint.h>
 
 /// Represents a 256 bit secret key, used for encryption.
@@ -17,4 +18,6 @@ public:
   Key();
   /// Delete a key, zeroing out memory, and freeing it
   ~Key();
+  /// Write out this key in PEM format to some output stream
+  void write_pem(std::ostream &stream);
 };
