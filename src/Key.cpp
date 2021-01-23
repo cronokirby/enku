@@ -34,8 +34,11 @@ constexpr char base64(uint8_t c) {
   return BASE64_TABLE[c];
 }
 
+constexpr char *PEM_START = "-----BEGIN ENKU PRIVATE KEY-----\n";
+constexpr char *PEM_END = "-----END ENKU PRIVATE KEY-----\n";
+
 void Key::write_pem(std::ostream &stream) {
-  stream << "-----BEGIN ENKU PRIVATE KEY-----\n";
+  stream << PEM_START;
   uint32_t block_size = 1 << 5;
   uint32_t blocks = KEY_SIZE >> 5;
   for (uint32_t block = 0; block < blocks; ++block) {
@@ -52,5 +55,5 @@ void Key::write_pem(std::ostream &stream) {
     }
     stream.put('\n');
   }
-  stream << "-----END ENKU PRIVATE KEY-----\n";
+  stream << PEM_END;
 }
