@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SecretData.hpp"
-#include <ostream>
+#include <iostream>
 #include <stdint.h>
 
 /// Represents a 256 bit secret key, used for encryption.
@@ -13,12 +13,15 @@ public:
   constexpr static uint32_t KEY_SIZE = 32;
 
 private:
-  // By having this as a member, the data will be cleared correctly upon destruction
+  // By having this as a member, the data will be cleared correctly upon
+  // destruction
   SecretData<Key::KEY_SIZE> data;
 
 public:
   /// Create a new key, initialized randomly
   static Key random();
+  /// Read a key from a PEM file
+  static Key read_pem(std::istream &stream);
   /// Write out this key in PEM format to some output stream
   void write_pem(std::ostream &stream);
 };
