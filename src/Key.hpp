@@ -1,23 +1,24 @@
 #pragma once
 
+#include "SecretData.hpp"
 #include <ostream>
 #include <stdint.h>
 
 /// Represents a 256 bit secret key, used for encryption.
 ///
-/// The point of using this class is that it will zero out the memory upon
-/// destruction, which can prevent information leakage, in some situations.
+/// This aguments SecretData with some utilities for random initialization,
+/// as well as utilities for dealing with PEM files.
 class Key final {
-  /// The actual bytes
-  uint8_t *data;
+public:
+  constexpr static uint32_t KEY_SIZE = 32;
+
+private:
+  // By having this as a member, the data will be cleared correctly upon destruction
+  SecretData<Key::KEY_SIZE> data;
 
 public:
   /// Create a new key, initialized randomly
   static Key random();
-  /// Create a new key, initializing some memory for the key on the heap
-  Key();
-  /// Delete a key, zeroing out memory, and freeing it
-  ~Key();
   /// Write out this key in PEM format to some output stream
   void write_pem(std::ostream &stream);
 };
