@@ -11,6 +11,8 @@ class Key final {
   uint8_t *data;
 
 public:
+  /// Create a new key, initialized randomly
+  static Key random();
   /// Create a new key, initializing some memory for the key on the heap
   Key();
   /// Delete a key, zeroing out memory, and freeing it

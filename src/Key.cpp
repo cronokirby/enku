@@ -1,10 +1,17 @@
 #include "Key.hpp"
+#include "random.hpp"
 
 // We use 256 bits, since that's the size mandated by ChaCha20
 constexpr uint32_t KEY_SIZE = 256;
 
 Key::Key() {
   data = new uint8_t[KEY_SIZE];
+}
+
+Key Key::random() {
+  Key key;
+  random_init(key.data, KEY_SIZE);
+  return key;
 }
 
 Key::~Key() {
