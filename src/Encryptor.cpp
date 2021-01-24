@@ -198,10 +198,10 @@ public:
   void encrypt(uint8_t *bytes, uint32_t n) const {
     uint32_t state_n = n >> 2;
     for (uint32_t i = 0; i < state_n; ++i) {
-      *bytes++ = state[i];
-      *bytes++ = state[i] >> 8;
-      *bytes++ = state[i] >> 16;
-      *bytes++ = state[i] >> 24;
+      *bytes++ ^= state[i];
+      *bytes++ ^= state[i] >> 8;
+      *bytes++ ^= state[i] >> 16;
+      *bytes++ ^= state[i] >> 24;
     }
     uint32_t remaining = n & 0x3;
     if (remaining == 0) {
@@ -209,7 +209,7 @@ public:
     }
     uint32_t last = state[state_n];
     for (uint32_t i = 0; i < remaining; ++i) {
-      *bytes++ = last;
+      *bytes++ ^= last;
       last >>= 8;
     }
   }
@@ -258,7 +258,7 @@ void Encryptor::decrypt(std::istream &in, std::ostream &out) {
     iter.shuffle();
     iter.encrypt(block, read);
 
-    out.write((char *)block, read);
+    out.write((char*)block, read);
   }
   out.flush();
 }
