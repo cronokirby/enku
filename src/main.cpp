@@ -1,10 +1,13 @@
-#include "Key.hpp"
+#include "Encryptor.hpp"
 #include <fstream>
 
 int main() {
-  std::ifstream in{".key.pem"};
-  auto key = Key::read_pem(in);
-  std::ofstream out{".key2.pem"};
-  key.write_pem(out);
+  std::ifstream key_file{".key.pem"};
+  auto encryptor = Encryptor::read_pem(key_file);
+
+  std::ifstream in{"hello.txt"};
+  std::ofstream out{"hello.bin"};
+  encryptor.encrypt(in, out);
+
   return 0;
 }

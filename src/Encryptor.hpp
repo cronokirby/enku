@@ -30,4 +30,9 @@ public:
 
   /// Serialize this Encryptor by writing out its key
   void write_pem(std::ostream &stream);
+
+  /// Encrypt all the bytes of the in stream, writing them to the out stream.
+  ///
+  /// This also adds the necessary header.
+  void encrypt(std::istream &in, std::ostream &out);
 };

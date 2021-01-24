@@ -14,4 +14,6 @@ file(GLOB_RECURSE sources CONFIGURE_DEPENDS "src/*.cpp")
 # Create a lox executable from the sources we've gathered
 add_executable(enku ${sources})
 # Standard, but strict compiler options
-target_compile_options(enku PRIVATE -Werror -Wall -Wextra)
+target_compile_options(enku PRIVATE -Werror -Wall -Wextra -fsanitize=address -g)
+target_link_libraries(enku -fsanitize=address)
+

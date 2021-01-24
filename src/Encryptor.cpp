@@ -68,6 +68,9 @@ Encryptor Encryptor::read_pem(std::istream &stream) {
 
     *cursor++ = (c2 << 6) | c1;
     *cursor++ = (c3 << 4) | (c2 >> 2);
+    if (cursor == enc.key.data + KEY_SIZE) {
+      break;
+    }
     *cursor++ = (c4 << 2) | (c3 >> 4);
   }
 
@@ -149,12 +152,14 @@ class ChaChaState {
   }
 
   ChaChaState(const ChaChaState &that) {
-    for (uint32_t i = 0; i < SIZE * SIZE; ++i) {
+    for (uint32_t i = 0; i < SIZE; ++i) {
       state[i] = that.state[i];
     }
   }
 
 public:
+  constexpr static uint32_t BLOCK_SIZE = 64;
+
   ChaChaState(uint8_t *key, uint8_t *nonce) {
     uint32_t *cursor = state.data;
     *cursor++ = 0x61707865;
@@ -168,7 +173,7 @@ public:
 
     *cursor++ = 0;
 
-    for (uint32_t i = 0; i < NONCE_SIZE; ++i) {
+    for (uint32_t i = 0; i < NONCE_SIZE; i += 4) {
       *cursor++ = read_u32_le(nonce + i);
     }
   }
@@ -209,3 +214,25 @@ public:
     }
   }
 };
+
+void Encryptor::encrypt(std::istream &in, std::ostream &out) {
+  uint8_t nonce[NONCE_SIZE];
+  random_init(nonce, NONCE_SIZE);
+
+  out << "ENKU";
+  out.write((char*)nonce, NONCE_SIZE);
+
+  ChaChaState initial{key.data, nonce};
+
+  uint8_t block[ChaChaState::BLOCK_SIZE];
+  for (uint32_t ctr = 1; !in.eof(); ++ctr) {
+    in.read((char*)block, ChaChaState::BLOCK_SIZE);
+    uint32_t read = in.gcount();
+
+    ChaChaState iter{initial, ctr};
+    iter.shuffle();
+    iter.encrypt(block, read);
+
+    out.write((char*)block, read);
+  }
+}
