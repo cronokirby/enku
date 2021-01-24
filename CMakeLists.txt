@@ -16,4 +16,3 @@ add_executable(enku ${sources})
 # Standard, but strict compiler options
 target_compile_options(enku PRIVATE -Werror -Wall -Wextra -fsanitize=address -g)
 target_link_libraries(enku -fsanitize=address)
-
