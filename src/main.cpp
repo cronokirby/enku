@@ -30,8 +30,16 @@ int main(int argc, char **argv) {
     std::ifstream in{argv[3]};
 
     encryptor.decrypt(in, std::cout);
-  }
+  } else if (command == "keygen") {
+    if (argc < 3) {
+      std::cerr << "insuficcient arguments";
+      return -1;
+    }
 
+    std::ofstream key_file{argv[2]};
+    auto encryptor = Encryptor::random();
+    encryptor.write_pem(key_file);
+  }
 
   return 0;
 }
