@@ -106,6 +106,12 @@ void Encryptor::write_pem(std::ostream &stream) {
   stream << '\n' << PEM_END;
 }
 
+constexpr uint32_t NONCE_SIZE = 12;
+
+constexpr uint32_t read_u32_le(uint8_t *bytes) {
+  return (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0];
+}
+
 constexpr void chacha_qround(uint32_t &a, uint32_t &b, uint32_t &c,
                              uint32_t &d) {
   a += b;
@@ -123,12 +129,6 @@ constexpr void chacha_qround(uint32_t &a, uint32_t &b, uint32_t &c,
   c += d;
   b ^= c;
   b <<= 7;
-}
-
-constexpr uint32_t NONCE_SIZE = 12;
-
-constexpr uint32_t read_u32_le(uint8_t *bytes) {
-  return (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0];
 }
 
 class ChaChaState {
@@ -215,15 +215,8 @@ public:
   }
 };
 
-void Encryptor::encrypt(std::istream &in, std::ostream &out) {
-  uint8_t nonce[NONCE_SIZE];
-  random_init(nonce, NONCE_SIZE);
-
-  out << "ENKU";
-  out.write((char *)nonce, NONCE_SIZE);
-
-  ChaChaState initial{key.data, nonce};
-
+void keystream_transfer(const ChaChaState &initial, std::istream &in,
+                        std::ostream &out) {
   uint8_t block[ChaChaState::BLOCK_SIZE];
   for (uint32_t ctr = 1; !in.eof(); ++ctr) {
     in.read((char *)block, ChaChaState::BLOCK_SIZE);
@@ -238,6 +231,17 @@ void Encryptor::encrypt(std::istream &in, std::ostream &out) {
   out.flush();
 }
 
+void Encryptor::encrypt(std::istream &in, std::ostream &out) {
+  uint8_t nonce[NONCE_SIZE];
+  random_init(nonce, NONCE_SIZE);
+
+  out << "ENKU";
+  out.write((char *)nonce, NONCE_SIZE);
+
+  ChaChaState initial{key.data, nonce};
+  keystream_transfer(initial, in, out);
+}
+
 void Encryptor::decrypt(std::istream &in, std::ostream &out) {
   for (uint32_t i = 0; i < 4; ++i) {
     if (in.get() != "ENKU"[i]) {
@@ -248,17 +252,5 @@ void Encryptor::decrypt(std::istream &in, std::ostream &out) {
   in.read((char *)nonce, NONCE_SIZE);
 
   ChaChaState initial{key.data, nonce};
-
-  uint8_t block[ChaChaState::BLOCK_SIZE];
-  for (uint32_t ctr = 1; !in.eof(); ++ctr) {
-    in.read((char *)block, ChaChaState::BLOCK_SIZE);
-    uint32_t read = in.gcount();
-
-    ChaChaState iter{initial, ctr};
-    iter.shuffle();
-    iter.encrypt(block, read);
-
-    out.write((char*)block, read);
-  }
-  out.flush();
+  keystream_transfer(initial, in, out);
 }
