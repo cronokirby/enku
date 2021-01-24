@@ -1,12 +1,12 @@
-#include "Key.hpp"
+#include "Encryptor.hpp"
 #include "random.hpp"
 #include <assert.h>
 #include <iostream>
 
-Key Key::random() {
-  Key key;
-  random_init(key.data.bytes, KEY_SIZE);
-  return key;
+Encryptor Encryptor::random() {
+  Encryptor enc;
+  random_init(enc.key.bytes, KEY_SIZE);
+  return enc;
 }
 
 constexpr char BASE64_TABLE[65] =
@@ -44,7 +44,7 @@ constexpr char PEM_END[] = "-----END ENKU PRIVATE KEY-----\n";
 // How many bytes does it take to encode our key in base 64
 constexpr uint32_t BASE64_KEY_SIZE = 44;
 
-Key Key::read_pem(std::istream &stream) {
+Encryptor Encryptor::read_pem(std::istream &stream) {
   for (uint32_t i = 0; i < std::char_traits<char>::length(PEM_START); ++i) {
     if (stream.get() != PEM_START[i]) {
       throw std::runtime_error("Invalid PEM header");
@@ -58,8 +58,8 @@ Key Key::read_pem(std::istream &stream) {
     throw std::runtime_error("Invalid key length");
   }
 
-  Key key;
-  uint8_t *cursor = key.data.bytes;
+  Encryptor enc;
+  uint8_t *cursor = enc.key.bytes;
   for (uint32_t i = 0; i < BASE64_KEY_SIZE; i += 4) {
     uint8_t c1 = unbase64(key_line.bytes[i]);
     uint8_t c2 = unbase64(key_line.bytes[i + 1]);
@@ -76,16 +76,16 @@ Key Key::read_pem(std::istream &stream) {
       throw std::runtime_error("Invalid PEM footer");
     }
   }
-  return key;
+  return enc;
 }
 
-void Key::write_pem(std::ostream &stream) {
+void Encryptor::write_pem(std::ostream &stream) {
   stream << PEM_START;
 
   for (uint32_t i = 0; i + 2 < KEY_SIZE; i += 3) {
-    uint8_t x1 = data.bytes[i];
-    uint8_t x2 = data.bytes[i + 1];
-    uint8_t x3 = i + 2 >= KEY_SIZE ? 0 : data.bytes[i + 2];
+    uint8_t x1 = key.bytes[i];
+    uint8_t x2 = key.bytes[i + 1];
+    uint8_t x3 = i + 2 >= KEY_SIZE ? 0 : key.bytes[i + 2];
 
     stream.put(base64(x1));
     stream.put(base64((x2 << 2) | (x1 >> 6)));
@@ -93,8 +93,8 @@ void Key::write_pem(std::ostream &stream) {
     stream.put(base64(x3 >> 2));
   }
 
-  uint8_t x1 = data.bytes[KEY_SIZE - 2];
-  uint8_t x2 = data.bytes[KEY_SIZE - 1];
+  uint8_t x1 = key.bytes[KEY_SIZE - 2];
+  uint8_t x2 = key.bytes[KEY_SIZE - 1];
   stream.put(base64(x1));
   stream.put(base64((x2 << 2) | (x1 >> 6)));
   stream.put(base64(x2 >> 4));
