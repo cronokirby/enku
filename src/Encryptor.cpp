@@ -5,7 +5,7 @@
 
 Encryptor Encryptor::random() {
   Encryptor enc;
-  random_init(enc.key.bytes, KEY_SIZE);
+  random_init(enc.key.data, KEY_SIZE);
   return enc;
 }
 
@@ -53,18 +53,18 @@ Encryptor Encryptor::read_pem(std::istream &stream) {
 
   // We need an extra slot for the '\0'
   SecretData<BASE64_KEY_SIZE + 1> key_line;
-  stream.getline((char *)key_line.bytes, BASE64_KEY_SIZE + 1);
+  stream.getline((char *)key_line.data, BASE64_KEY_SIZE + 1);
   if (stream.gcount() != BASE64_KEY_SIZE + 1) {
     throw std::runtime_error("Invalid key length");
   }
 
   Encryptor enc;
-  uint8_t *cursor = enc.key.bytes;
+  uint8_t *cursor = enc.key.data;
   for (uint32_t i = 0; i < BASE64_KEY_SIZE; i += 4) {
-    uint8_t c1 = unbase64(key_line.bytes[i]);
-    uint8_t c2 = unbase64(key_line.bytes[i + 1]);
-    uint8_t c3 = unbase64(key_line.bytes[i + 2]);
-    uint8_t c4 = unbase64(key_line.bytes[i + 3]);
+    uint8_t c1 = unbase64(key_line[i]);
+    uint8_t c2 = unbase64(key_line[i + 1]);
+    uint8_t c3 = unbase64(key_line[i + 2]);
+    uint8_t c4 = unbase64(key_line[i + 3]);
 
     *cursor++ = (c2 << 6) | c1;
     *cursor++ = (c3 << 4) | (c2 >> 2);
@@ -83,9 +83,9 @@ void Encryptor::write_pem(std::ostream &stream) {
   stream << PEM_START;
 
   for (uint32_t i = 0; i + 2 < KEY_SIZE; i += 3) {
-    uint8_t x1 = key.bytes[i];
-    uint8_t x2 = key.bytes[i + 1];
-    uint8_t x3 = i + 2 >= KEY_SIZE ? 0 : key.bytes[i + 2];
+    uint8_t x1 = key[i];
+    uint8_t x2 = key[i + 1];
+    uint8_t x3 = i + 2 >= KEY_SIZE ? 0 : key[i + 2];
 
     stream.put(base64(x1));
     stream.put(base64((x2 << 2) | (x1 >> 6)));
@@ -93,8 +93,8 @@ void Encryptor::write_pem(std::ostream &stream) {
     stream.put(base64(x3 >> 2));
   }
 
-  uint8_t x1 = key.bytes[KEY_SIZE - 2];
-  uint8_t x2 = key.bytes[KEY_SIZE - 1];
+  uint8_t x1 = key[KEY_SIZE - 2];
+  uint8_t x2 = key[KEY_SIZE - 1];
   stream.put(base64(x1));
   stream.put(base64((x2 << 2) | (x1 >> 6)));
   stream.put(base64(x2 >> 4));
@@ -129,19 +129,17 @@ constexpr uint32_t read_u32_le(uint8_t *bytes) {
 }
 
 class ChaChaState {
-  constexpr static uint32_t SIZE = 4;
+  constexpr static uint32_t SIZE = 16;
 
-  uint32_t *data;
+  SecretData<SIZE, uint32_t> state;
 
   void qround(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
-    chacha_qround(data[a], data[b], data[c], data[d]);
+    chacha_qround(state[a], state[b], state[c], state[d]);
   }
 
 public:
   ChaChaState(uint8_t *key, uint8_t *nonce) {
-    data = new uint32_t[SIZE * SIZE];
-
-    uint32_t *cursor = data;
+    uint32_t *cursor = state.data;
     *cursor++ = 0x61707865;
     *cursor++ = 0x3320646e;
     *cursor++ = 0x79622d32;
@@ -158,15 +156,10 @@ public:
     }
   }
 
-  ChaChaState(const ChaChaState &state, uint32_t ctr) {
-    data = new uint32_t[SIZE * SIZE];
-
+  ChaChaState(const ChaChaState &that, uint32_t ctr) {
     for (uint32_t i = 0; i < SIZE * SIZE; ++i) {
-      data[i] = state.data[i];
+      state[i] = that.state[i];
     }
-  }
-
-  ~ChaChaState() {
-    delete[] data;
+    state[12] = ctr;
   }
 };
