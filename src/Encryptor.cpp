@@ -102,3 +102,71 @@ void Encryptor::write_pem(std::ostream &stream) {
 
   stream << '\n' << PEM_END;
 }
+
+constexpr void chacha_qround(uint32_t &a, uint32_t &b, uint32_t &c,
+                             uint32_t &d) {
+  a += b;
+  d ^= a;
+  d <<= 16;
+
+  c += d;
+  b ^= c;
+  b <<= 12;
+
+  a += b;
+  d ^= a;
+  d <<= 8;
+
+  c += d;
+  b ^= c;
+  b <<= 7;
+}
+
+constexpr uint32_t NONCE_SIZE = 12;
+
+constexpr uint32_t read_u32_le(uint8_t *bytes) {
+  return (bytes[3] << 24) | (bytes[2] << 16) | (bytes[1] << 8) | bytes[0];
+}
+
+class ChaChaState {
+  constexpr static uint32_t SIZE = 4;
+
+  uint32_t *data;
+
+  void qround(uint32_t a, uint32_t b, uint32_t c, uint32_t d) {
+    chacha_qround(data[a], data[b], data[c], data[d]);
+  }
+
+public:
+  ChaChaState(uint8_t *key, uint8_t *nonce) {
+    data = new uint32_t[SIZE * SIZE];
+
+    uint32_t *cursor = data;
+    *cursor++ = 0x61707865;
+    *cursor++ = 0x3320646e;
+    *cursor++ = 0x79622d32;
+    *cursor++ = 0x6b206574;
+
+    for (uint32_t i = 0; i < Encryptor::KEY_SIZE; i += 4) {
+      *cursor++ = read_u32_le(key + i);
+    }
+
+    *cursor++ = 0;
+
+    for (uint32_t i = 0; i < NONCE_SIZE; ++i) {
+      *cursor++ = read_u32_le(nonce + i);
+    }
+  }
+
+  ChaChaState(const ChaChaState &state, uint32_t ctr) {
+    data = new uint32_t[SIZE * SIZE];
+
+    for (uint32_t i = 0; i < SIZE * SIZE; ++i) {
+      data[i] = state.data[i];
+    }
+  }
+
+  ~ChaChaState() {
+    delete[] data;
+  }
+};
