@@ -137,6 +137,23 @@ class ChaChaState {
     chacha_qround(state[a], state[b], state[c], state[d]);
   }
 
+  void inner_block() {
+    qround(0, 4, 8, 12);
+    qround(1, 5, 9, 13);
+    qround(2, 6, 10, 14);
+    qround(3, 7, 11, 15);
+    qround(0, 5, 10, 15);
+    qround(1, 6, 11, 12);
+    qround(2, 7, 8, 13);
+    qround(3, 4, 9, 14);
+  }
+
+  ChaChaState(const ChaChaState &that) {
+    for (uint32_t i = 0; i < SIZE * SIZE; ++i) {
+      state[i] = that.state[i];
+    }
+  }
+
 public:
   ChaChaState(uint8_t *key, uint8_t *nonce) {
     uint32_t *cursor = state.data;
@@ -156,10 +173,20 @@ public:
     }
   }
 
-  ChaChaState(const ChaChaState &that, uint32_t ctr) {
-    for (uint32_t i = 0; i < SIZE * SIZE; ++i) {
-      state[i] = that.state[i];
-    }
+  ChaChaState(const ChaChaState &that, uint32_t ctr)
+      : ChaChaState{that} {
     state[12] = ctr;
+  }
+
+  void shuffle() {
+    ChaChaState working{*this};
+
+    for (uint32_t i = 0; i < 10; ++i) {
+      working.inner_block();
+    }
+
+    for (uint32_t i = 0; i < SIZE; ++i) {
+      state[i] += working.state[i];
+    }
   }
 };
