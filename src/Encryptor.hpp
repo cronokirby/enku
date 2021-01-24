@@ -35,4 +35,7 @@ public:
   ///
   /// This also adds the necessary header.
   void encrypt(std::istream &in, std::ostream &out);
+
+  /// Decrypt an input stream, with a known format, writing out the plaintext
+  void decrypt(std::istream &in, std::ostream &out);
 };

@@ -1,13 +1,37 @@
 #include "Encryptor.hpp"
 #include <fstream>
 
-int main() {
-  std::ifstream key_file{".key.pem"};
-  auto encryptor = Encryptor::read_pem(key_file);
+int main(int argc, char **argv) {
+  if (argc < 2) {
+    std::cerr << "insufficient arguments";
+    return -1;
+  }
 
-  std::ifstream in{"hello.txt"};
-  std::ofstream out{"hello.bin"};
-  encryptor.encrypt(in, out);
+  std::string command{argv[1]};
+  if (command == "encrypt") {
+    if (argc < 4) {
+      std::cerr << "insufficient arguments";
+      return -1;
+    }
+    std::ifstream key_file{argv[2]};
+    auto encryptor = Encryptor::read_pem(key_file);
+    std::ifstream in{argv[3]};
+
+    encryptor.encrypt(in, std::cout);
+  } else if (command == "decrypt") {
+    if (argc < 4) {
+      std::cerr << "insufficient arguments";
+      return -1;
+    }
+
+    std::ifstream key_file{argv[2]};
+    auto encryptor = Encryptor::read_pem(key_file);
+
+    std::ifstream in{argv[3]};
+
+    encryptor.decrypt(in, std::cout);
+  }
+
 
   return 0;
 }

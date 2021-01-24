@@ -220,19 +220,45 @@ void Encryptor::encrypt(std::istream &in, std::ostream &out) {
   random_init(nonce, NONCE_SIZE);
 
   out << "ENKU";
-  out.write((char*)nonce, NONCE_SIZE);
+  out.write((char *)nonce, NONCE_SIZE);
 
   ChaChaState initial{key.data, nonce};
 
   uint8_t block[ChaChaState::BLOCK_SIZE];
   for (uint32_t ctr = 1; !in.eof(); ++ctr) {
-    in.read((char*)block, ChaChaState::BLOCK_SIZE);
+    in.read((char *)block, ChaChaState::BLOCK_SIZE);
     uint32_t read = in.gcount();
 
     ChaChaState iter{initial, ctr};
     iter.shuffle();
     iter.encrypt(block, read);
 
-    out.write((char*)block, read);
+    out.write((char *)block, read);
   }
+  out.flush();
+}
+
+void Encryptor::decrypt(std::istream &in, std::ostream &out) {
+  for (uint32_t i = 0; i < 4; ++i) {
+    if (in.get() != "ENKU"[i]) {
+      throw std::runtime_error("Invalid file header");
+    }
+  }
+  uint8_t nonce[NONCE_SIZE];
+  in.read((char *)nonce, NONCE_SIZE);
+
+  ChaChaState initial{key.data, nonce};
+
+  uint8_t block[ChaChaState::BLOCK_SIZE];
+  for (uint32_t ctr = 1; !in.eof(); ++ctr) {
+    in.read((char *)block, ChaChaState::BLOCK_SIZE);
+    uint32_t read = in.gcount();
+
+    ChaChaState iter{initial, ctr};
+    iter.shuffle();
+    iter.encrypt(block, read);
+
+    out.write((char *)block, read);
+  }
+  out.flush();
 }
